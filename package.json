@@ -4,23 +4,42 @@
   "private": true,
   "main": "electron-main.cjs",
   "scripts": {
-    "dev": "concurrently \"vite\" \"cmd /c wait-on http://localhost:5173 && electron electron-main.cjs\"",
-    "build": "vite build && electron-builder",
-    "start": "electron electron-main.cjs"
+    "dev": "concurrently -k \"npm run backend\" \"npm run frontend\" \"npm run electron\"",
+    "frontend": "vite",
+    "backend": "cd backend && npm run dev",
+    "electron": "wait-on http://localhost:5173 && electron .",
+    "build": "vite build",
+    "preview": "vite preview",
+    "make": "electron-builder"
   },
   "dependencies": {
-    "concurrently": "^7.6.0",
-    "electron": "^26.0.0",
-    "jspdf": "^4.0.0",
-    "jspdf-autotable": "^5.0.7",
-    "mysql2": "^3.3.0",
-    "wait-on": "^7.0.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.0",
-    "electron-builder": "^24.0.0",
+    "axios": "^1.6.7",
+    "concurrently": "^8.2.2",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "vite": "^5.0.0"
+    "wait-on": "^7.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^31.0.2",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.1.4"
+  },
+  "build": {
+    "appId": "com.clinica.app",
+    "productName": "Clínica App",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!backend/node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
   }
 }

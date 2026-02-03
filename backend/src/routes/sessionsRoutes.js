@@ -1,3 +1,4 @@
+// backend/src/routes/sessionsRoutes.js
 import express from 'express';
 import { startSession, endSession } from '../controllers/sessionControllers.js';
 

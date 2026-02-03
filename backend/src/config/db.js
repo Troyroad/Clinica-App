@@ -1,14 +1,17 @@
-// src/config/db.js
-import mysql from "mysql2/promise";
+// backend/src/config/db.js
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
-const db = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "1803", // <--- tu password de MySQL
-  database: "clinica_db",
+dotenv.config();
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '1803',
+  database: process.env.DB_NAME || 'clinica_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
+  queueLimit: 0
 });
 
-export default db;
+export default pool;
