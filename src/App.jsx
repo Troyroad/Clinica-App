@@ -7,7 +7,6 @@ const SecretaryModule = lazy(() => import('./components/SecretaryModule'))
 
 export default function App() {
   const [user, setUser] = useState(null)
-  const [employees, setEmployees] = useState([])
   const [view, setView] = useState(null)
 
   function handleLogin(userData) {
@@ -49,14 +48,11 @@ export default function App() {
       <main>
         <Suspense fallback={<div>Cargando...</div>}>
           {view === 'admin' && user.role === 'admin' && (
-            <AdminModule employees={employees} setEmployees={setEmployees} />
+            <AdminModule onLogout={logout} />
           )}
 
           {view === 'secretary' && (
-            <SecretaryModule
-              employees={employees}
-              setEmployees={setEmployees}
-            />
+            <SecretaryModule onLogout={logout} />
           )}
         </Suspense>
       </main>

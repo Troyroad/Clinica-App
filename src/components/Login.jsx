@@ -5,23 +5,36 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setLoading(true)
 
-    // DEMO (luego se conecta a BD)
-    if (username === 'admin' && password === 'admin123') {
-      onLogin({ name: 'Administrador', role: 'admin' })
-      return
+    try {
+      // Importar axios dinámicamente o usar fetch
+      const res = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Error al iniciar sesión')
+      }
+
+      if (data.success) {
+        onLogin(data.user)
+      }
+    } catch (err) {
+      console.error('Error de login:', err)
+      setError(err.message || 'Error de conexión')
+    } finally {
+      setLoading(false)
     }
-
-    if (username === 'secretaria' && password === 'secretaria123') {
-      onLogin({ name: 'Secretaria', role: 'secretary' })
-      return
-    }
-
-    setError('Usuario o contraseña incorrectos')
   }
 
   return (
@@ -36,6 +49,7 @@ export default function Login({ onLogin }) {
           value={username}
           onChange={e => setUsername(e.target.value)}
           style={styles.input}
+          disabled={loading}
         />
 
         <input
@@ -44,6 +58,7 @@ export default function Login({ onLogin }) {
           value={password}
           onChange={e => setPassword(e.target.value)}
           style={styles.input}
+          disabled={loading}
         />
 
         {/* Ver contraseña */}
@@ -58,8 +73,8 @@ export default function Login({ onLogin }) {
 
         {error && <div style={styles.error}>{error}</div>}
 
-        <button type="submit" style={styles.button}>
-          Ingresar
+        <button type="submit" style={styles.button} disabled={loading}>
+          {loading ? 'Ingresando...' : 'Ingresar'}
         </button>
       </form>
     </div>
@@ -117,7 +132,13 @@ const styles = {
     color: 'white',
     fontSize: 16,
     fontWeight: 600,
-    cursor: 'pointer'
+    cursor: 'pointer',
+    opacity: 0.9,
+    transition: 'opacity 0.2s',
+    ':disabled': {
+      opacity: 0.6,
+      cursor: 'not-allowed'
+    }
   },
   error: {
     color: '#dc2626',

@@ -5,6 +5,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import employeesRoutes from './src/routes/employeesRoutes.js';
 import sessionsRoutes from './src/routes/sessionsRoutes.js';
+import positionRoutes from './src/routes/positionRoutes.js';
+import authRoutes from './src/routes/authRoutes.js';
 
 // Corregir la advertencia de MaxListeners
 EventEmitter.defaultMaxListeners = 20;
@@ -22,13 +24,15 @@ app.use(cors({
 app.use(express.json());
 
 // Rutas
+app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeesRoutes);
 app.use('/api/sessions', sessionsRoutes);
+app.use('/api/positions', positionRoutes);
 
 // Ruta de prueba
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Backend funcionando',
     timestamp: new Date().toISOString()
   });
@@ -39,31 +43,31 @@ app.get('/api/test-db', async (req, res) => {
   try {
     const db = await import('./src/config/db.js');
     const [rows] = await db.default.query('SELECT 1 + 1 AS result');
-    res.json({ 
-      db: 'Conectado', 
-      result: rows[0].result 
+    res.json({
+      db: 'Conectado',
+      result: rows[0].result
     });
   } catch (error) {
-    res.status(500).json({ 
-      db: 'Error', 
-      error: error.message 
+    res.status(500).json({
+      db: 'Error',
+      error: error.message
     });
   }
 });
 
 // Manejo de errores 404
 app.use((req, res, next) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Ruta no encontrada',
-    path: req.originalUrl 
+    path: req.originalUrl
   });
 });
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
   console.error('Error del servidor:', err);
-  res.status(500).json({ 
-    message: 'Error interno del servidor', 
+  res.status(500).json({
+    message: 'Error interno del servidor',
     error: process.env.NODE_ENV === 'development' ? err.message : {}
   });
 });

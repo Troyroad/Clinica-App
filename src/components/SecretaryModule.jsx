@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import AddEmployeeModal from './AddEmployeeModal'
 
-export default function SecretaryModule() {
+export default function SecretaryModule({ onLogout }) {
   const [employees, setEmployees] = useState([])
+  const [positions, setPositions] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [section, setSection] = useState('attendance') // 'attendance' o 'employees'
   const [, setTick] = useState(0) // refresco cada minuto
@@ -16,20 +17,31 @@ export default function SecretaryModule() {
     return () => clearInterval(interval)
   }, [])
 
-  // 🔁 Traer empleados al iniciar
+  // 🔁 Traer empleados y cargos al iniciar
   useEffect(() => {
     fetchEmployees()
+    fetchPositions()
   }, [])
+
+  // 🔁 Obtener cargos
+  const fetchPositions = async () => {
+    try {
+      const res = await axios.get('http://localhost:3001/api/positions')
+      setPositions(res.data)
+    } catch (err) {
+      console.error('Error al cargar cargos:', err)
+    }
+  }
 
   // 🔁 FUNCIÓN PRINCIPAL: Obtener empleados con sus sesiones
   const fetchEmployees = async () => {
     setLoading(true)
     try {
-      const res = await axios.get('http://localhost:3002/api/employees')
+      const res = await axios.get('http://localhost:3001/api/employees')
       setEmployees(res.data)
     } catch (err) {
       console.error('Error al cargar empleados:', err)
-      alert('Error al cargar empleados. Verifica que el backend esté corriendo en puerto 3002')
+      alert('Error al cargar empleados. Verifica que el backend esté corriendo en puerto 3001')
     } finally {
       setLoading(false)
     }
@@ -45,16 +57,16 @@ export default function SecretaryModule() {
       const employeeData = {
         name: data.name,
         lastName: data.lastName,
-        role: data.role,
-        idNumber: data.idNumber
+        idNumber: data.idNumber,
+        positionId: data.positionId
       }
-      
-      const res = await axios.post('http://localhost:3002/api/employees', employeeData)
-      
+
+      const res = await axios.post('http://localhost:3001/api/employees', employeeData)
+
       // Agregar el nuevo empleado a la lista
       setEmployees(prev => [...prev, res.data])
       setShowModal(false)
-      
+
       alert('Empleado agregado correctamente')
     } catch (err) {
       console.error('Error al agregar empleado:', err.response?.data || err)
@@ -69,11 +81,11 @@ export default function SecretaryModule() {
   // -------------------------
   const removeEmployee = async (id) => {
     if (!window.confirm('¿Está seguro de eliminar este empleado?')) return
-    
+
     try {
       setLoading(true)
-      await axios.delete(`http://localhost:3002/api/employees/${id}`)
-      
+      await axios.delete(`http://localhost:3001/api/employees/${id}`)
+
       // Eliminar de la lista local
       setEmployees(prev => prev.filter(e => e.id !== id))
       alert('Empleado eliminado correctamente')
@@ -91,10 +103,10 @@ export default function SecretaryModule() {
   const clockIn = async (id) => {
     try {
       setLoading(true)
-      await axios.post('http://localhost:3002/api/sessions/start', { 
-        employee_id: id 
+      await axios.post('http://localhost:3001/api/sessions/start', {
+        employee_id: id
       })
-      
+
       // Refrescar la lista para actualizar estados
       await fetchEmployees()
       alert('Entrada registrada correctamente')
@@ -112,10 +124,10 @@ export default function SecretaryModule() {
   const clockOut = async (id) => {
     try {
       setLoading(true)
-      await axios.post('http://localhost:3002/api/sessions/end', { 
-        employee_id: id 
+      await axios.post('http://localhost:3001/api/sessions/end', {
+        employee_id: id
       })
-      
+
       // Refrescar la lista para actualizar estados
       await fetchEmployees()
       alert('Salida registrada correctamente')
@@ -132,17 +144,17 @@ export default function SecretaryModule() {
   // -------------------------
   const calculateTime = (sessions = []) => {
     if (!sessions || sessions.length === 0) return '00:00'
-    
+
     const totalMs = sessions.reduce((acc, s) => {
       const start = new Date(s.start)
       const end = s.end ? new Date(s.end) : new Date()
       return acc + (end - start)
     }, 0)
-    
+
     const totalMinutes = Math.floor(totalMs / 60000)
     const hours = Math.floor(totalMinutes / 60)
     const minutes = totalMinutes % 60
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
   }
 
@@ -165,26 +177,30 @@ export default function SecretaryModule() {
       {/* Sidebar */}
       <aside style={styles.sidebar}>
         <h3 style={styles.menuTitle}>Secretaría</h3>
-        <button 
-          style={section === 'attendance' ? styles.menuActive : styles.menuBtn} 
+        <button
+          style={section === 'attendance' ? styles.menuActive : styles.menuBtn}
           onClick={() => setSection('attendance')}
           disabled={loading}
         >
           Marcar asistencia
         </button>
-        <button 
-          style={section === 'employees' ? styles.menuActive : styles.menuBtn} 
+        <button
+          style={section === 'employees' ? styles.menuActive : styles.menuBtn}
           onClick={() => setSection('employees')}
           disabled={loading}
         >
           Lista de empleados
+        </button>
+
+        <button style={styles.logoutBtn} onClick={onLogout}>
+          Cerrar Sesión
         </button>
       </aside>
 
       {/* Main */}
       <main style={styles.content}>
         <div style={styles.card}>
-          
+
           {/* Indicador de carga */}
           {loading && (
             <div style={styles.loadingOverlay}>
@@ -197,9 +213,9 @@ export default function SecretaryModule() {
           {section === 'attendance' && (
             <>
               <h2>Marcar asistencia</h2>
-              
+
               <div style={styles.refreshBar}>
-                <button 
+                <button
                   onClick={fetchEmployees}
                   disabled={loading}
                   style={styles.refreshButton}
@@ -208,7 +224,7 @@ export default function SecretaryModule() {
                 </button>
                 <small>Última actualización: {new Date().toLocaleTimeString()}</small>
               </div>
-              
+
               {employees.length === 0 ? (
                 <p style={{ opacity: 0.6, textAlign: 'center', padding: '20px' }}>
                   {loading ? 'Cargando empleados...' : 'No hay empleados registrados.'}
@@ -218,7 +234,7 @@ export default function SecretaryModule() {
                   {employees.map(e => {
                     const active = hasActiveSession(e.sessions)
                     const activeSession = getActiveSession(e.sessions)
-                    
+
                     return (
                       <li key={e.id} style={styles.item}>
                         <div>
@@ -229,14 +245,14 @@ export default function SecretaryModule() {
                             Tiempo trabajado hoy: <strong>{calculateTime(e.sessions)}</strong>
                             {active && (
                               <span style={{ color: '#e74c3c', marginLeft: '10px' }}>
-                                ● En turno (desde: {new Date(activeSession.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})
+                                ● En turno (desde: {new Date(activeSession.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
                               </span>
                             )}
                           </small>
                         </div>
                         <div style={styles.actions}>
                           {!active ? (
-                            <button 
+                            <button
                               onClick={() => clockIn(e.id)}
                               disabled={loading}
                               style={styles.primaryButton}
@@ -244,7 +260,7 @@ export default function SecretaryModule() {
                               Entrada
                             </button>
                           ) : (
-                            <button 
+                            <button
                               onClick={() => clockOut(e.id)}
                               disabled={loading}
                               style={styles.secondaryButton}
@@ -265,17 +281,17 @@ export default function SecretaryModule() {
           {section === 'employees' && (
             <>
               <h2>Lista de empleados</h2>
-              
+
               <div style={styles.headerActions}>
-                <button 
-                  className="secondary" 
+                <button
+                  className="secondary"
                   onClick={() => setShowModal(true)}
                   disabled={loading}
                   style={styles.addButton}
                 >
                   + Agregar empleado
                 </button>
-                <button 
+                <button
                   onClick={fetchEmployees}
                   disabled={loading}
                   style={styles.refreshButton}
@@ -283,7 +299,7 @@ export default function SecretaryModule() {
                   Actualizar
                 </button>
               </div>
-              
+
               {employees.length === 0 ? (
                 <p style={{ opacity: 0.6, textAlign: 'center', padding: '20px' }}>
                   {loading ? 'Cargando...' : 'No hay empleados registrados. Agrega el primero.'}
@@ -302,8 +318,8 @@ export default function SecretaryModule() {
                         </div>
                       </div>
                       <div style={styles.actions}>
-                        <button 
-                          className="danger" 
+                        <button
+                          className="danger"
                           onClick={() => removeEmployee(e.id)}
                           disabled={loading}
                           style={styles.dangerButton}
@@ -320,9 +336,10 @@ export default function SecretaryModule() {
 
           {/* Modal para agregar empleado */}
           {showModal && (
-            <AddEmployeeModal 
-              onAdd={addEmployee} 
-              onClose={() => setShowModal(false)} 
+            <AddEmployeeModal
+              onAdd={addEmployee}
+              onClose={() => setShowModal(false)}
+              positions={positions}
             />
           )}
         </div>
@@ -333,75 +350,87 @@ export default function SecretaryModule() {
 
 // ================== ESTILOS (MANTENIDOS ORIGINALES + MEJORAS) ==================
 const styles = {
-  layout: { 
-    display: 'flex', 
-    minHeight: '100vh', 
-    background: '#f3f4f6' 
+  layout: {
+    display: 'flex',
+    minHeight: '100vh',
+    background: '#f3f4f6'
   },
-  sidebar: { 
-    width: 230, 
-    background: '#1f2937', 
-    padding: 20, 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: 10 
+  sidebar: {
+    width: 230,
+    background: '#1f2937',
+    padding: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10
   },
-  menuTitle: { 
-    color: '#fff', 
-    marginBottom: 20 
+  menuTitle: {
+    color: '#fff',
+    marginBottom: 20
   },
-  menuBtn: { 
-    background: 'transparent', 
-    border: 'none', 
-    color: '#d1d5db', 
-    padding: 10, 
-    textAlign: 'left', 
-    borderRadius: 6, 
-    cursor: 'pointer' 
+  menuBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#d1d5db',
+    padding: 10,
+    textAlign: 'left',
+    borderRadius: 6,
+    cursor: 'pointer'
   },
-  menuActive: { 
-    background: '#2563eb', 
-    color: '#fff', 
-    border: 'none', 
-    padding: 10, 
-    textAlign: 'left', 
-    borderRadius: 6 
+  menuActive: {
+    background: '#2563eb',
+    color: '#fff',
+    border: 'none',
+    padding: 10,
+    textAlign: 'left',
+    borderRadius: 6
   },
-  content: { 
-    flex: 1, 
-    padding: 30, 
-    display: 'flex', 
-    justifyContent: 'center' 
+  logoutBtn: {
+    marginTop: 'auto',
+    background: '#374151',
+    color: '#fbbf24',
+    border: '1px solid #fbbf24',
+    padding: 12,
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center'
   },
-  card: { 
-    width: '100%', 
-    maxWidth: 800, 
-    background: '#fff', 
-    borderRadius: 14, 
-    padding: 32, 
+  content: {
+    flex: 1,
+    padding: 30,
+    display: 'flex',
+    justifyContent: 'center'
+  },
+  card: {
+    width: '100%',
+    maxWidth: 800,
+    background: '#fff',
+    borderRadius: 14,
+    padding: 32,
     boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
     position: 'relative'
   },
-  list: { 
-    listStyle: 'none', 
-    padding: 0, 
-    margin: 0 
+  list: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0
   },
-  item: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '14px 0', 
-    borderBottom: '1px solid #e5e7eb' 
+  item: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '14px 0',
+    borderBottom: '1px solid #e5e7eb'
   },
-  role: { 
-    fontSize: 13, 
-    color: '#6b7280', 
-    marginBottom: 4 
+  role: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 4
   },
-  actions: { 
-    display: 'flex', 
-    gap: 8 
+  actions: {
+    display: 'flex',
+    gap: 8
   },
   stats: {
     display: 'flex',
@@ -487,11 +516,41 @@ const styles = {
   }
 }
 
-// Agregar animación de spinner
-const styleSheet = document.styleSheets[0];
-styleSheet.insertRule(`
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+// Agregar animación de spinner de forma segura
+if (typeof document !== 'undefined' && document.styleSheets && document.styleSheets[0]) {
+  try {
+    const styleSheet = document.styleSheets[0];
+    const keyframesRule = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+
+    // Verificar si la regla ya existe
+    let ruleExists = false;
+    for (let i = 0; i < styleSheet.cssRules.length; i++) {
+      if (styleSheet.cssRules[i].cssText && styleSheet.cssRules[i].cssText.includes('@keyframes spin')) {
+        ruleExists = true;
+        break;
+      }
+    }
+
+    if (!ruleExists) {
+      styleSheet.insertRule(keyframesRule, styleSheet.cssRules.length);
+    }
+  } catch (e) {
+    // Si falla, crear un elemento style
+    if (!document.getElementById('secretary-module-spinner-styles')) {
+      const style = document.createElement('style');
+      style.id = 'secretary-module-spinner-styles';
+      style.innerHTML = `
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
-`, styleSheet.cssRules.length);
+}

@@ -9,7 +9,7 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
     idNumber: ''
   })
   const [loading, setLoading] = useState(false)
-  
+
   // 🔁 Refs para manejar focus
   const nameInputRef = useRef(null)
   const lastNameInputRef = useRef(null)
@@ -50,7 +50,7 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
     if (!form.name.trim()) missingFields.push('Nombre')
     if (!form.lastName.trim()) missingFields.push('Apellido')
     if (!form.idNumber.trim()) missingFields.push('Cédula')
-    
+
     if (missingFields.length > 0) {
       alert(`Complete los campos requeridos: ${missingFields.join(', ')}`)
       return
@@ -59,7 +59,7 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
     setLoading(true)
     try {
       await onAdd({ ...form })
-      
+
       // 🔁 LIMPIAR FORMULARIO DESPUÉS DE ÉXITO
       setForm({
         name: '',
@@ -67,7 +67,7 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
         role: '',
         idNumber: ''
       })
-      
+
       // 🔁 CERRAR MODAL
       onClose()
     } catch (err) {
@@ -86,8 +86,8 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
   }
 
   return (
-    <div 
-      style={styles.overlay} 
+    <div
+      style={styles.overlay}
       onClick={handleOverlayClick}
       onKeyDown={handleKeyDown}
     >
@@ -216,7 +216,18 @@ const styles = {
     fontSize: '16px',
     boxSizing: 'border-box',
     transition: 'border-color 0.2s, box-shadow 0.2s',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
     outline: 'none'
+  },
+  select: {
+    width: '100%',
+    padding: '12px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '16px',
+    boxSizing: 'border-box',
+    outline: 'none',
+    backgroundColor: 'white'
   },
   inputFocus: {
     borderColor: '#007bff',
@@ -262,9 +273,10 @@ const styles = {
   }
 }
 
-// 🔁 Agregar animación
-useEffect(() => {
+// 🔁 Agregar animación CSS (sin hooks fuera del componente)
+if (typeof document !== 'undefined' && !document.getElementById('add-employee-modal-styles')) {
   const style = document.createElement('style')
+  style.id = 'add-employee-modal-styles'
   style.innerHTML = `
     @keyframes slideIn {
       from {
@@ -291,8 +303,4 @@ useEffect(() => {
     }
   `
   document.head.appendChild(style)
-
-  return () => {
-    document.head.removeChild(style)
-  }
-}, [])
+}

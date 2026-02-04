@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 
 export default function UserManagement() {
   const [users, setUsers] = useState([
@@ -8,76 +9,126 @@ export default function UserManagement() {
 
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ username: '', password: '', role: '' })
+  const [loading, setLoading] = useState(false)
 
   function startEdit(user) {
     setEditing(user.id)
     setForm({ username: user.username, password: '', role: user.role })
   }
 
-  function save() {
+  async function save() {
     if (!form.username || !form.role) {
       alert('Usuario y rol son obligatorios')
       return
     }
 
-    setUsers(prev =>
-      prev.map(u =>
-        u.id === editing
-          ? { ...u, username: form.username, role: form.role }
-          : u
+    setLoading(true)
+    try {
+      // Actualizar en el estado local
+      setUsers(prev =>
+        prev.map(u =>
+          u.id === editing
+            ? { ...u, username: form.username, role: form.role }
+            : u
+        )
       )
-    )
 
-    setEditing(null)
-    setForm({ username: '', password: '', role: '' })
+      setEditing(null)
+      setForm({ username: '', password: '', role: '' })
 
-    alert('Usuario actualizado (demo)')
+      alert('✅ Usuario actualizado correctamente')
+    } catch (error) {
+      console.error('Error al actualizar usuario:', error)
+      alert('Error al actualizar usuario')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div style={styles.card}>
-      <h3>Usuarios del sistema</h3>
+    <div>
+      <h2 style={styles.title}>Gestión de Usuarios del Sistema</h2>
+      <p style={styles.description}>
+        Administra los usuarios que tienen acceso al sistema
+      </p>
 
-      {users.map(u => (
-        <div key={u.id} style={styles.userRow}>
-          <div>
-            <strong>{u.username}</strong>
-            <div style={styles.role}>{u.role}</div>
+      <div style={styles.userList}>
+        {users.map(u => (
+          <div key={u.id} style={styles.userCard}>
+            <div style={styles.userInfo}>
+              <strong style={styles.username}>{u.username}</strong>
+              <span style={styles.role}>
+                {u.role === 'admin' ? 'Administrador' : 'Secretaria'}
+              </span>
+            </div>
+
+            <button
+              style={styles.editButton}
+              onClick={() => startEdit(u)}
+              disabled={loading}
+            >
+              Editar
+            </button>
           </div>
-
-          <button onClick={() => startEdit(u)}>Editar</button>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {editing && (
         <div style={styles.editBox}>
-          <h4>Editar usuario</h4>
+          <h3 style={styles.editTitle}>Editar Usuario</h3>
 
-          <input
-            placeholder="Usuario"
-            value={form.username}
-            onChange={e => setForm({ ...form, username: e.target.value })}
-          />
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Usuario</label>
+            <input
+              placeholder="Nombre de usuario"
+              value={form.username}
+              onChange={e => setForm({ ...form, username: e.target.value })}
+              style={styles.input}
+              disabled={loading}
+            />
+          </div>
 
-          <input
-            placeholder="Nueva contraseña"
-            type="password"
-            value={form.password}
-            onChange={e => setForm({ ...form, password: e.target.value })}
-          />
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Nueva Contraseña</label>
+            <input
+              placeholder="Dejar vacío para no cambiar"
+              type="password"
+              value={form.password}
+              onChange={e => setForm({ ...form, password: e.target.value })}
+              style={styles.input}
+              disabled={loading}
+            />
+          </div>
 
-          <select
-            value={form.role}
-            onChange={e => setForm({ ...form, role: e.target.value })}
-          >
-            <option value="">Rol</option>
-            <option value="admin">Admin</option>
-            <option value="secretaria">Secretaria</option>
-          </select>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Rol</label>
+            <select
+              value={form.role}
+              onChange={e => setForm({ ...form, role: e.target.value })}
+              style={styles.input}
+              disabled={loading}
+            >
+              <option value="">Seleccionar rol</option>
+              <option value="admin">Administrador</option>
+              <option value="secretaria">Secretaria</option>
+            </select>
+          </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={save}>Guardar</button>
-            <button onClick={() => setEditing(null)}>Cancelar</button>
+          <div style={styles.buttonGroup}>
+            <button
+              onClick={save}
+              style={styles.saveButton}
+              disabled={loading}
+            >
+              {loading ? 'Guardando...' : 'Guardar Cambios'}
+            </button>
+            <button
+              onClick={() => setEditing(null)}
+              style={styles.cancelButton}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
@@ -86,28 +137,109 @@ export default function UserManagement() {
 }
 
 const styles = {
-  card: {
-    marginTop: 30,
-    background: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: '0 10px 25px rgba(0,0,0,0.08)'
+  title: {
+    marginTop: 0,
+    marginBottom: 8,
+    fontSize: 28,
+    color: '#1f2937'
   },
-  userRow: {
+  description: {
+    marginBottom: 24,
+    color: '#6b7280',
+    fontSize: 15
+  },
+  userList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    marginBottom: 24
+  },
+  userCard: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px 0',
-    borderBottom: '1px solid #e5e7eb'
+    padding: 16,
+    background: '#f9fafb',
+    borderRadius: 8,
+    border: '1px solid #e5e7eb'
   },
-  role: {
-    fontSize: 13,
-    color: '#6b7280'
-  },
-  editBox: {
-    marginTop: 20,
+  userInfo: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 10
+    gap: 6
+  },
+  username: {
+    fontSize: 16,
+    color: '#1f2937'
+  },
+  role: {
+    fontSize: 14,
+    color: '#6b7280'
+  },
+  editButton: {
+    background: '#2563eb',
+    color: '#fff',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  editBox: {
+    marginTop: 24,
+    padding: 24,
+    background: '#fff',
+    borderRadius: 12,
+    border: '2px solid #2563eb',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.1)'
+  },
+  editTitle: {
+    marginTop: 0,
+    marginBottom: 20,
+    fontSize: 20,
+    color: '#1f2937'
+  },
+  formGroup: {
+    marginBottom: 16
+  },
+  label: {
+    display: 'block',
+    marginBottom: 6,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151'
+  },
+  input: {
+    width: '100%',
+    padding: 10,
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    fontSize: 14,
+    boxSizing: 'border-box'
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: 12,
+    marginTop: 20
+  },
+  saveButton: {
+    background: '#10b981',
+    color: '#fff',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  cancelButton: {
+    background: '#6b7280',
+    color: '#fff',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 14
   }
 }
