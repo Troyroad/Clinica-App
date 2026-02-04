@@ -25,11 +25,11 @@ export default function SecretaryModule() {
   const fetchEmployees = async () => {
     setLoading(true)
     try {
-      const res = await axios.get('http://localhost:3000/api/employees')
+      const res = await axios.get('http://localhost:3002/api/employees')
       setEmployees(res.data)
     } catch (err) {
       console.error('Error al cargar empleados:', err)
-      alert('Error al cargar empleados. Verifica que el backend esté corriendo en puerto 3000')
+      alert('Error al cargar empleados. Verifica que el backend esté corriendo en puerto 3002')
     } finally {
       setLoading(false)
     }
@@ -49,7 +49,7 @@ export default function SecretaryModule() {
         idNumber: data.idNumber
       }
       
-      const res = await axios.post('http://localhost:3000/api/employees', employeeData)
+      const res = await axios.post('http://localhost:3002/api/employees', employeeData)
       
       // Agregar el nuevo empleado a la lista
       setEmployees(prev => [...prev, res.data])
@@ -72,7 +72,7 @@ export default function SecretaryModule() {
     
     try {
       setLoading(true)
-      await axios.delete(`http://localhost:3000/api/employees/${id}`)
+      await axios.delete(`http://localhost:3002/api/employees/${id}`)
       
       // Eliminar de la lista local
       setEmployees(prev => prev.filter(e => e.id !== id))
@@ -91,7 +91,7 @@ export default function SecretaryModule() {
   const clockIn = async (id) => {
     try {
       setLoading(true)
-      await axios.post('http://localhost:3000/api/sessions/start', { 
+      await axios.post('http://localhost:3002/api/sessions/start', { 
         employee_id: id 
       })
       
@@ -112,7 +112,7 @@ export default function SecretaryModule() {
   const clockOut = async (id) => {
     try {
       setLoading(true)
-      await axios.post('http://localhost:3000/api/sessions/end', { 
+      await axios.post('http://localhost:3002/api/sessions/end', { 
         employee_id: id 
       })
       

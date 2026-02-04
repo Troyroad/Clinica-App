@@ -4,7 +4,7 @@
   "private": true,
   "main": "electron-main.cjs",
   "scripts": {
-    "dev": "concurrently -k \"npm run backend\" \"npm run frontend\" \"npm run electron\"",
+    "dev": "concurrently -k \"npm run frontend\" \"npm run electron\"",
     "frontend": "vite",
     "backend": "cd backend && npm run dev",
     "electron": "wait-on http://localhost:5173 && electron .",

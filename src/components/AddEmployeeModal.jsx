@@ -263,32 +263,36 @@ const styles = {
 }
 
 // 🔁 Agregar animación
-const styleSheet = document.styleSheets[0]
-styleSheet.insertRule(`
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
+useEffect(() => {
+  const style = document.createElement('style')
+  style.innerHTML = `
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`, styleSheet.cssRules.length)
 
-// 🔁 Agregar estilos para placeholders
-styleSheet.insertRule(`
-  input::placeholder {
-    color: #999;
-    opacity: 1;
+    input::placeholder {
+      color: #999;
+      opacity: 1;
+    }
+
+    input:focus::placeholder {
+      color: #ccc;
+    }
+
+    input:disabled::placeholder {
+      color: #ddd;
+    }
+  `
+  document.head.appendChild(style)
+
+  return () => {
+    document.head.removeChild(style)
   }
-  
-  input:focus::placeholder {
-    color: #ccc;
-  }
-  
-  input:disabled::placeholder {
-    color: #ddd;
-  }
-`, styleSheet.cssRules.length)
+}, [])
