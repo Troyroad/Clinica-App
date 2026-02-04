@@ -39,10 +39,6 @@ export default function App() {
             <button onClick={() => setView('secretary')}>Secretaría</button>
           </>
         )}
-
-        <button className="secondary" onClick={logout}>
-          Cerrar sesión
-        </button>
       </header>
 
       <main>

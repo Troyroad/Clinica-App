@@ -62,3 +62,19 @@ button.secondary:hover {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Estilos Globales de Placeholder */
+::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+input:focus::placeholder {
+  color: #d1d5db !important;
+  opacity: 0.8 !important;
+}
+
+textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
