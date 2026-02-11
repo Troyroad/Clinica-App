@@ -9,6 +9,7 @@ export default function AdminModule(props) {
   const [section, setSection] = useState('daily')
   const [employees, setEmployees] = useState([])
   const [positions, setPositions] = useState([])
+  const [honorariumPositions, setHonorariumPositions] = useState([])
   const [, setTick] = useState(0)
 
   // Estados para Reporte Diario
@@ -20,35 +21,55 @@ export default function AdminModule(props) {
   const [entryTime, setEntryTime] = useState('08:00')
   const [tolerance, setTolerance] = useState(30)
 
-  // Estados para Cargos
+  // Estados para Cargos Quincenales
   const [editingEmployee, setEditingEmployee] = useState(null)
   const [editingPosition, setEditingPosition] = useState(null)
   const [showPositionForm, setShowPositionForm] = useState(false)
-  const [positionForm, setPositionForm] = useState({ name: '', monthly_salary: '', description: '' })
+  const [positionForm, setPositionForm] = useState({
+    name: '',
+    monthly_salary: '',
+    description: '',
+    late_deduction_percentage: 5
+  })
+
+  // Estados para Cargos por Honorario
+  const [editingHonorariumPosition, setEditingHonorariumPosition] = useState(null)
+  const [showHonorariumPositionForm, setShowHonorariumPositionForm] = useState(false)
+  const [honorariumPositionForm, setHonorariumPositionForm] = useState({
+    name: '',
+    hourly_rate: '',
+    description: '',
+    late_deduction_percentage: 10
+  })
 
   // 🔁 Cargar empleados y cargos cada minuto
   useEffect(() => {
     fetchEmployees()
     fetchPositions()
+    fetchHonorariumPositions()
     const interval = setInterval(() => {
       setTick(Date.now())
       fetchEmployees()
       fetchPositions()
+      fetchHonorariumPositions()
     }, 60000)
     return () => clearInterval(interval)
   }, [])
 
-  // 🔁 Obtener empleados desde backend
-  const fetchEmployees = async () => {
+  // 🔁 Obtener empleados desde backend (con soporte para fecha específica)
+  const fetchEmployees = async (specificDate = null) => {
     try {
-      const res = await axios.get('http://localhost:3001/api/employees')
+      const url = specificDate
+        ? `http://localhost:3001/api/employees?date=${specificDate}`
+        : `http://localhost:3001/api/employees`
+      const res = await axios.get(url)
       setEmployees(res.data)
     } catch (err) {
       console.error('Error al cargar empleados:', err)
     }
   }
 
-  // 🔁 Obtener cargos desde backend
+  // 🔁 Obtener cargos quincenales desde backend
   const fetchPositions = async () => {
     try {
       const res = await axios.get('http://localhost:3001/api/positions')
@@ -57,6 +78,21 @@ export default function AdminModule(props) {
       console.error('Error al cargar cargos:', err)
     }
   }
+
+  // 🔁 Obtener cargos por honorario desde backend
+  const fetchHonorariumPositions = async () => {
+    try {
+      const res = await axios.get('http://localhost:3001/api/honorarium-positions')
+      setHonorariumPositions(res.data)
+    } catch (err) {
+      console.error('Error al cargar cargos por honorario:', err)
+    }
+  }
+
+  // Actualizar empleados cuando cambia la fecha
+  useEffect(() => {
+    fetchEmployees(date)
+  }, [date])
 
   const formatTime = mins => {
     const h = Math.floor(mins / 60)
@@ -85,7 +121,8 @@ export default function AdminModule(props) {
         ...e,
         sessions,
         totalMinutes,
-        name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim()
+        name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+        displayPosition: e.positionName || e.honorariumPositionName || 'Sin cargo'
       }
     }).filter(e => e.sessions.length > 0)
   }, [employees, date])
@@ -96,6 +133,7 @@ export default function AdminModule(props) {
     const days = new Date(year, month + 1, 0).getDate()
     for (let d = 1; d <= days; d++) {
       const day = new Date(year, month, d).getDay()
+      // No contar sábados (6) ni domingos (0)
       if (day !== 0 && day !== 6) count++
     }
     return count
@@ -131,6 +169,7 @@ export default function AdminModule(props) {
       return {
         id: e.id,
         name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+        positionName: e.positionName || e.honorariumPositionName || 'Sin cargo',
         present,
         tardy,
         absent: totalDays - present
@@ -138,38 +177,72 @@ export default function AdminModule(props) {
     })
   }, [employees, month, entryTime, tolerance])
 
-  /* ================= SUELDOS CON DESCUENTOS ================= */
+  /* ================= SUELDOS - TODOS LOS EMPLEADOS ================= */
   const payroll = useMemo(() => {
     const [y, m] = month.split('-').map(Number)
 
     return employees.map(e => {
       const attendance = attendanceSummary.find(a => a.id === e.id)
 
-      // Asegurar que sea número y manejar nulos de forma segura
       let baseSalary = 0
-      if (e.monthlySalary) {
-        baseSalary = Number(e.monthlySalary)
-      } else if (e.monthly_salary) {
-        baseSalary = Number(e.monthly_salary)
+      let deductions = 0
+      let paymentType = 'Sin cargo'
+
+      // EMPLEADOS QUINCENALES
+      if (e.positionId && e.monthlySalary) {
+        paymentType = 'Quincenal'
+        baseSalary = Number(e.monthlySalary) / 2
+
+        const lateDeductionPct = e.lateDeductionPercentage || 5
+        const tardyDeduction = (attendance?.tardy || 0) * (baseSalary * lateDeductionPct / 100)
+
+        const workingDays = getWorkingDays(y, m - 1)
+        const dailySalary = baseSalary / (workingDays / 2)
+        const absentDeduction = (attendance?.absent || 0) * dailySalary
+
+        deductions = tardyDeduction + absentDeduction
+      }
+      // EMPLEADOS POR HONORARIO
+      else if (e.honorariumPositionId && e.hourlyRate) {
+        paymentType = 'Honorario'
+
+        // Calcular horas trabajadas en el mes
+        const honorariumSessions = (e.honorariumSessions || []).filter(s => {
+          if (!s.start) return false
+          const d = new Date(s.start)
+          return d.getFullYear() === y && d.getMonth() === m - 1
+        })
+
+        const totalHours = honorariumSessions.reduce((acc, s) => {
+          const start = new Date(s.start)
+          const end = s.end ? new Date(s.end) : new Date()
+          const hours = (end - start) / (1000 * 60 * 60)
+          return acc + hours
+        }, 0)
+
+        baseSalary = totalHours * Number(e.hourlyRate)
+
+        // Descuentos por tardanza si aplica
+        const lateDeductionPct = e.honorariumLateDeductionPercentage || 10
+        const tardyDeduction = (attendance?.tardy || 0) * (baseSalary * lateDeductionPct / 100)
+        deductions = tardyDeduction
       }
 
-      // Calcular descuentos (ejemplo: $50 por falta, $10 por tardanza)
-      const absentDeduction = (attendance?.absent || 0) * 50
-      const tardyDeduction = (attendance?.tardy || 0) * 10
-      const totalDeductions = absentDeduction + tardyDeduction
-      const finalSalary = Math.max(0, baseSalary - totalDeductions)
+      const finalSalary = Math.max(0, baseSalary - deductions)
 
       return {
         name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
-        positionName: e.positionName || 'Sin cargo',
+        positionName: e.positionName || e.honorariumPositionName || 'Sin cargo',
+        paymentType,
         baseSalary,
         tardy: attendance?.tardy || 0,
         absent: attendance?.absent || 0,
-        deductions: totalDeductions,
+        deductions,
         total: finalSalary
       }
-    })
+    }).filter(e => e.baseSalary > 0) // Solo mostrar empleados con salario asignado
   }, [employees, attendanceSummary, month])
+
 
   /* ================= FUNCIÓN EXPORTAR PDF ================= */
   function exportPayrollPDF() {
@@ -187,12 +260,13 @@ export default function AdminModule(props) {
       doc.setFontSize(10)
       doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' })
 
-      const headers = [['No.', 'Empleado', 'Cargo', 'Sueldo Base', 'Tardanzas', 'Faltas', 'Descuentos', 'Total']]
+      const headers = [['No.', 'Empleado', 'Cargo', 'Tipo Pago', 'Sueldo Base', 'Tardanzas', 'Faltas', 'Descuentos', 'Total']]
 
       const tableData = payroll.map((emp, index) => [
         (index + 1).toString(),
         emp.name || `Empleado ${index + 1}`,
         emp.positionName,
+        emp.paymentType,
         `$${emp.baseSalary.toFixed(2)}`,
         emp.tardy.toString(),
         emp.absent.toString(),
@@ -201,7 +275,7 @@ export default function AdminModule(props) {
       ])
 
       const totalFinal = payroll.reduce((sum, e) => sum + e.total, 0)
-      tableData.push(['', 'TOTAL GENERAL', '', '', '', '', '', `$${totalFinal.toFixed(2)}`])
+      tableData.push(['', 'TOTAL GENERAL', '', '', '', '', '', '', `$${totalFinal.toFixed(2)}`])
 
       doc.autoTable({
         startY: 35,
@@ -219,7 +293,7 @@ export default function AdminModule(props) {
     }
   }
 
-  /* ================= GESTIÓN DE CARGOS ================= */
+  /* ================= GESTIÓN DE CARGOS QUINCENALES ================= */
   const handleSavePosition = async () => {
     try {
       if (!positionForm.name || !positionForm.monthly_salary) {
@@ -235,7 +309,7 @@ export default function AdminModule(props) {
         alert('Cargo creado')
       }
 
-      setPositionForm({ name: '', monthly_salary: '', description: '' })
+      setPositionForm({ name: '', monthly_salary: '', description: '', late_deduction_percentage: 5 })
       setEditingPosition(null)
       setShowPositionForm(false)
       fetchPositions()
@@ -255,6 +329,42 @@ export default function AdminModule(props) {
     }
   }
 
+  /* ================= GESTIÓN DE CARGOS POR HONORARIO ================= */
+  const handleSaveHonorariumPosition = async () => {
+    try {
+      if (!honorariumPositionForm.name || !honorariumPositionForm.hourly_rate) {
+        alert('Nombre y tarifa por hora son requeridos')
+        return
+      }
+
+      if (editingHonorariumPosition) {
+        await axios.put(`http://localhost:3001/api/honorarium-positions/${editingHonorariumPosition.id}`, honorariumPositionForm)
+        alert('Cargo por honorario actualizado')
+      } else {
+        await axios.post('http://localhost:3001/api/honorarium-positions', honorariumPositionForm)
+        alert('Cargo por honorario creado')
+      }
+
+      setHonorariumPositionForm({ name: '', hourly_rate: '', description: '', late_deduction_percentage: 10 })
+      setEditingHonorariumPosition(null)
+      setShowHonorariumPositionForm(false)
+      fetchHonorariumPositions()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al guardar cargo por honorario')
+    }
+  }
+
+  const handleDeleteHonorariumPosition = async (id) => {
+    if (!confirm('¿Eliminar este cargo por honorario?')) return
+    try {
+      await axios.delete(`http://localhost:3001/api/honorarium-positions/${id}`)
+      alert('Cargo por honorario eliminado')
+      fetchHonorariumPositions()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al eliminar cargo')
+    }
+  }
+
   const handleEditEmployee = async (employee) => {
     setEditingEmployee(employee)
   }
@@ -266,7 +376,8 @@ export default function AdminModule(props) {
         lastName: editingEmployee.lastName,
         role: editingEmployee.role,
         idNumber: editingEmployee.idNumber,
-        positionId: editingEmployee.positionId
+        positionId: editingEmployee.positionId,
+        honorariumPositionId: editingEmployee.honorariumPositionId
       })
       alert('Empleado actualizado')
       setEditingEmployee(null)
@@ -284,16 +395,19 @@ export default function AdminModule(props) {
 
         <div style={styles.menuContainer}>
           <button style={section === 'daily' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('daily')}>
-            Reporte diario
+            Reporte Diario
           </button>
           <button style={section === 'calendar' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('calendar')}>
-            Asistencias
+            Asistencia
           </button>
           <button style={section === 'positions' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('positions')}>
             Cargos
           </button>
+          <button style={section === 'honorarium-positions' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('honorarium-positions')}>
+            Cargos por Honorario
+          </button>
           <button style={section === 'payroll' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('payroll')}>
-            Sueldos
+            Nómina Mensual
           </button>
           <button style={section === 'employees' ? styles.menuActive : styles.menuBtn} onClick={() => setSection('employees')}>
             Usuarios
@@ -324,6 +438,7 @@ export default function AdminModule(props) {
                 <thead>
                   <tr>
                     <th style={styles.th}>Empleado</th>
+                    <th style={styles.th}>Cargo</th>
                     <th style={styles.th}>Tiempo Trabajado</th>
                     <th style={styles.th}></th>
                   </tr>
@@ -332,7 +447,11 @@ export default function AdminModule(props) {
                   {report.map(e => (
                     <React.Fragment key={e.id}>
                       <tr>
-                        <td style={styles.td}>{e.name}</td>
+                        <td style={styles.td}>
+                          <strong>{e.name}</strong>
+                          <div style={styles.positionLabel}>{e.displayPosition}</div>
+                        </td>
+                        <td style={styles.td}>{e.displayPosition}</td>
                         <td style={styles.td}>{formatTime(e.totalMinutes)}</td>
                         <td style={styles.td}>
                           <button
@@ -345,7 +464,7 @@ export default function AdminModule(props) {
                       </tr>
                       {openId === e.id && (
                         <tr>
-                          <td colSpan="3" style={styles.detailCell}>
+                          <td colSpan="4" style={styles.detailCell}>
                             {e.sessions.map((s, i) => {
                               const start = new Date(s.start)
                               const end = s.end ? new Date(s.end) : new Date()
@@ -355,6 +474,7 @@ export default function AdminModule(props) {
                                   <span>
                                     {start.toLocaleTimeString()} —{' '}
                                     {s.end ? end.toLocaleTimeString() : 'Trabajando'}
+                                    {s.shift && ` (Turno: ${s.shift})`}
                                   </span>
                                   <strong>{formatTime(mins)}</strong>
                                 </div>
@@ -404,6 +524,7 @@ export default function AdminModule(props) {
                 <thead>
                   <tr>
                     <th style={styles.th}>Empleado</th>
+                    <th style={styles.th}>Cargo</th>
                     <th style={styles.th}>Presentes</th>
                     <th style={styles.th}>Tardanzas</th>
                     <th style={styles.th}>Ausentes</th>
@@ -412,7 +533,11 @@ export default function AdminModule(props) {
                 <tbody>
                   {attendanceSummary.map(e => (
                     <tr key={e.id}>
-                      <td style={styles.td}>{e.name}</td>
+                      <td style={styles.td}>
+                        <strong>{e.name}</strong>
+                        <div style={styles.positionLabel}>{e.positionName}</div>
+                      </td>
+                      <td style={styles.td}>{e.positionName}</td>
                       <td style={styles.td}>{e.present}</td>
                       <td style={styles.td}>{e.tardy}</td>
                       <td style={styles.td}>{e.absent}</td>
@@ -426,10 +551,10 @@ export default function AdminModule(props) {
           {/* ================= USUARIOS ================= */}
           {section === 'employees' && <UserManagement />}
 
-          {/* ================= CARGOS ================= */}
+          {/* ================= CARGOS QUINCENALES ================= */}
           {section === 'positions' && (
             <>
-              <h2 style={styles.sectionTitle}>Gestión de Cargos</h2>
+              <h2 style={styles.sectionTitle}>Gestión de Cargos Quincenales</h2>
 
               {/* Lista de Cargos */}
               <div style={styles.subsection}>
@@ -440,7 +565,7 @@ export default function AdminModule(props) {
                     onClick={() => {
                       setShowPositionForm(true)
                       setEditingPosition(null)
-                      setPositionForm({ name: '', monthly_salary: '', description: '' })
+                      setPositionForm({ name: '', monthly_salary: '', description: '', late_deduction_percentage: 5 })
                     }}
                   >
                     + Crear Cargo
@@ -452,6 +577,8 @@ export default function AdminModule(props) {
                     <tr>
                       <th style={styles.th}>Nombre</th>
                       <th style={styles.th}>Sueldo Mensual</th>
+                      <th style={styles.th}>Sueldo Quincenal</th>
+                      <th style={styles.th}>% Descuento Tardanza</th>
                       <th style={styles.th}>Descripción</th>
                       <th style={styles.th}>Acciones</th>
                     </tr>
@@ -461,6 +588,8 @@ export default function AdminModule(props) {
                       <tr key={pos.id}>
                         <td style={styles.td}>{pos.name}</td>
                         <td style={styles.td}>${Number(pos.monthly_salary).toFixed(2)}</td>
+                        <td style={styles.td}>${(Number(pos.monthly_salary) / 2).toFixed(2)}</td>
+                        <td style={styles.td}>{pos.late_deduction_percentage || 0}%</td>
                         <td style={styles.td}>{pos.description || '-'}</td>
                         <td style={styles.td}>
                           <button
@@ -470,7 +599,8 @@ export default function AdminModule(props) {
                               setPositionForm({
                                 name: pos.name,
                                 monthly_salary: pos.monthly_salary,
-                                description: pos.description || ''
+                                description: pos.description || '',
+                                late_deduction_percentage: pos.late_deduction_percentage || 5
                               })
                               setShowPositionForm(true)
                             }}
@@ -507,6 +637,13 @@ export default function AdminModule(props) {
                       style={styles.input}
                     />
                     <input
+                      type="number"
+                      placeholder="% Descuento por tardanza"
+                      value={positionForm.late_deduction_percentage}
+                      onChange={e => setPositionForm({ ...positionForm, late_deduction_percentage: e.target.value })}
+                      style={styles.input}
+                    />
+                    <input
                       type="text"
                       placeholder="Descripción (opcional)"
                       value={positionForm.description}
@@ -538,7 +675,7 @@ export default function AdminModule(props) {
                       <tr key={emp.id}>
                         <td style={styles.td}>{emp.name} {emp.lastName}</td>
                         <td style={styles.td}>{emp.idNumber}</td>
-                        <td style={styles.td}>{emp.positionName || 'Sin cargo'}</td>
+                        <td style={styles.td}>{emp.positionName || emp.honorariumPositionName || 'Sin cargo'}</td>
                         <td style={styles.td}>
                           <button
                             style={styles.editBtn}
@@ -576,13 +713,25 @@ export default function AdminModule(props) {
                       onChange={e => setEditingEmployee({ ...editingEmployee, idNumber: e.target.value })}
                       style={styles.input}
                     />
+                    <label style={styles.label}>Cargo Quincenal:</label>
                     <select
                       value={editingEmployee.positionId || ''}
                       onChange={e => setEditingEmployee({ ...editingEmployee, positionId: e.target.value || null })}
                       style={styles.input}
                     >
-                      <option value="">Sin cargo</option>
+                      <option value="">Sin cargo quincenal</option>
                       {positions.map(pos => (
+                        <option key={pos.id} value={pos.id}>{pos.name}</option>
+                      ))}
+                    </select>
+                    <label style={styles.label}>Cargo por Honorario:</label>
+                    <select
+                      value={editingEmployee.honorariumPositionId || ''}
+                      onChange={e => setEditingEmployee({ ...editingEmployee, honorariumPositionId: e.target.value || null })}
+                      style={styles.input}
+                    >
+                      <option value="">Sin cargo por honorario</option>
+                      {honorariumPositions.map(pos => (
                         <option key={pos.id} value={pos.id}>{pos.name}</option>
                       ))}
                     </select>
@@ -596,7 +745,113 @@ export default function AdminModule(props) {
             </>
           )}
 
-          {/* ================= SUELDOS ================= */}
+          {/* ================= CARGOS POR HONORARIO ================= */}
+          {section === 'honorarium-positions' && (
+            <>
+              <h2 style={styles.sectionTitle}>Gestión de Cargos por Honorario</h2>
+
+              <div style={styles.subsection}>
+                <div style={styles.subsectionHeader}>
+                  <h3>Cargos por Honorario Disponibles</h3>
+                  <button
+                    style={styles.primaryBtn}
+                    onClick={() => {
+                      setShowHonorariumPositionForm(true)
+                      setEditingHonorariumPosition(null)
+                      setHonorariumPositionForm({ name: '', hourly_rate: '', description: '', late_deduction_percentage: 10 })
+                    }}
+                  >
+                    + Crear Cargo por Honorario
+                  </button>
+                </div>
+
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Nombre</th>
+                      <th style={styles.th}>Tarifa por Hora</th>
+                      <th style={styles.th}>% Descuento Tardanza</th>
+                      <th style={styles.th}>Descripción</th>
+                      <th style={styles.th}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {honorariumPositions.map(pos => (
+                      <tr key={pos.id}>
+                        <td style={styles.td}>{pos.name}</td>
+                        <td style={styles.td}>${Number(pos.hourly_rate).toFixed(2)}/hora</td>
+                        <td style={styles.td}>{pos.late_deduction_percentage || 0}%</td>
+                        <td style={styles.td}>{pos.description || '-'}</td>
+                        <td style={styles.td}>
+                          <button
+                            style={styles.editBtn}
+                            onClick={() => {
+                              setEditingHonorariumPosition(pos)
+                              setHonorariumPositionForm({
+                                name: pos.name,
+                                hourly_rate: pos.hourly_rate,
+                                description: pos.description || '',
+                                late_deduction_percentage: pos.late_deduction_percentage || 10
+                              })
+                              setShowHonorariumPositionForm(true)
+                            }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            style={styles.deleteBtn}
+                            onClick={() => handleDeleteHonorariumPosition(pos.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {showHonorariumPositionForm && (
+                  <div style={styles.formCard}>
+                    <h4>{editingHonorariumPosition ? 'Editar Cargo por Honorario' : 'Nuevo Cargo por Honorario'}</h4>
+                    <input
+                      type="text"
+                      placeholder="Nombre del cargo"
+                      value={honorariumPositionForm.name}
+                      onChange={e => setHonorariumPositionForm({ ...honorariumPositionForm, name: e.target.value })}
+                      style={styles.input}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Tarifa por hora"
+                      value={honorariumPositionForm.hourly_rate}
+                      onChange={e => setHonorariumPositionForm({ ...honorariumPositionForm, hourly_rate: e.target.value })}
+                      style={styles.input}
+                    />
+                    <input
+                      type="number"
+                      placeholder="% Descuento por tardanza"
+                      value={honorariumPositionForm.late_deduction_percentage}
+                      onChange={e => setHonorariumPositionForm({ ...honorariumPositionForm, late_deduction_percentage: e.target.value })}
+                      style={styles.input}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Descripción (opcional)"
+                      value={honorariumPositionForm.description}
+                      onChange={e => setHonorariumPositionForm({ ...honorariumPositionForm, description: e.target.value })}
+                      style={styles.input}
+                    />
+                    <div style={styles.formActions}>
+                      <button style={styles.primaryBtn} onClick={handleSaveHonorariumPosition}>Guardar</button>
+                      <button style={styles.secondaryBtn} onClick={() => setShowHonorariumPositionForm(false)}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ================= NÓMINA - TODOS LOS EMPLEADOS ================= */}
           {section === 'payroll' && (
             <>
               <h2 style={styles.sectionTitle}>Nómina Mensual</h2>
@@ -616,6 +871,7 @@ export default function AdminModule(props) {
                   <tr>
                     <th style={styles.th}>Empleado</th>
                     <th style={styles.th}>Cargo</th>
+                    <th style={styles.th}>Tipo de Pago</th>
                     <th style={styles.th}>Sueldo Base</th>
                     <th style={styles.th}>Tardanzas</th>
                     <th style={styles.th}>Faltas</th>
@@ -626,8 +882,12 @@ export default function AdminModule(props) {
                 <tbody>
                   {payroll.map((e, i) => (
                     <tr key={i}>
-                      <td style={styles.td}>{e.name}</td>
+                      <td style={styles.td}>
+                        <strong>{e.name}</strong>
+                        <div style={styles.positionLabel}>{e.positionName}</div>
+                      </td>
                       <td style={styles.td}>{e.positionName}</td>
+                      <td style={styles.td}><strong>{e.paymentType}</strong></td>
                       <td style={styles.td}>${e.baseSalary.toFixed(2)}</td>
                       <td style={styles.td}>{e.tardy}</td>
                       <td style={styles.td}>{e.absent}</td>
@@ -639,7 +899,7 @@ export default function AdminModule(props) {
               </table>
               <div style={styles.footer}>
                 <strong>Total Empleados:</strong>
-                <span>{employees.length}</span>
+                <span>{payroll.length}</span>
               </div>
             </>
           )}
@@ -722,6 +982,14 @@ const styles = {
     fontSize: 14,
     minWidth: 150
   },
+  label: {
+    display: 'block',
+    marginTop: 10,
+    marginBottom: 5,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151'
+  },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
@@ -741,6 +1009,11 @@ const styles = {
     borderBottom: '1px solid #e5e7eb',
     fontSize: 14,
     color: '#1f2937'
+  },
+  positionLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4
   },
   detailCell: {
     padding: 14,
@@ -821,15 +1094,15 @@ const styles = {
     fontSize: 13
   },
   formCard: {
+    marginTop: 20,
+    padding: 20,
     background: '#fff',
-    padding: 24,
     borderRadius: 8,
-    marginTop: 16,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+    border: '2px solid #2563eb'
   },
   formActions: {
     display: 'flex',
     gap: 12,
-    marginTop: 16
+    marginTop: 20
   }
 }

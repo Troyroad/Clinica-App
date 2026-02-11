@@ -7,6 +7,8 @@ import employeesRoutes from './src/routes/employeesRoutes.js';
 import sessionsRoutes from './src/routes/sessionsRoutes.js';
 import positionRoutes from './src/routes/positionRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
+import honorariumPositionRoutes from './src/routes/honorariumPositionRoutes.js';
+import honorariumSessionRoutes from './src/routes/honorariumSessionRoutes.js';
 
 // Corregir la advertencia de MaxListeners
 EventEmitter.defaultMaxListeners = 20;
@@ -28,6 +30,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeesRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/positions', positionRoutes);
+app.use('/api/honorarium-positions', honorariumPositionRoutes);
+app.use('/api/honorarium-sessions', honorariumSessionRoutes);
 
 // Ruta de prueba
 app.get('/api/health', (req, res) => {
@@ -77,10 +81,11 @@ app.listen(PORT, () => {
   console.log(`📊 Rutas disponibles:`);
   console.log(`   GET    http://localhost:${PORT}/api/health`);
   console.log(`   GET    http://localhost:${PORT}/api/employees`);
-  console.log(`   POST   http://localhost:${PORT}/api/employees`);
-  console.log(`   PUT    http://localhost:${PORT}/api/employees/:id`);
-  console.log(`   DELETE http://localhost:${PORT}/api/employees/:id`);
+  console.log(`   GET    http://localhost:${PORT}/api/positions`);
+  console.log(`   GET    http://localhost:${PORT}/api/honorarium-positions`);
   console.log(`   POST   http://localhost:${PORT}/api/sessions/start`);
   console.log(`   POST   http://localhost:${PORT}/api/sessions/end`);
+  console.log(`   POST   http://localhost:${PORT}/api/honorarium-sessions/start`);
+  console.log(`   POST   http://localhost:${PORT}/api/honorarium-sessions/end`);
   console.log(`\n⚡ Usa Ctrl+C para detener el servidor\n`);
 });

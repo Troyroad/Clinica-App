@@ -32,7 +32,7 @@ export const getPosition = async (req, res) => {
 // Crear nuevo cargo
 export const createPosition = async (req, res) => {
     try {
-        const { name, monthly_salary, description } = req.body;
+        const { name, monthly_salary, description, late_deduction_percentage } = req.body;
 
         if (!name || !monthly_salary) {
             return res.status(400).json({
@@ -43,7 +43,8 @@ export const createPosition = async (req, res) => {
         const insertId = await PositionModel.createPosition(
             name,
             parseFloat(monthly_salary),
-            description
+            description,
+            late_deduction_percentage
         );
 
         const newPosition = await PositionModel.getPositionById(insertId);
@@ -65,7 +66,7 @@ export const createPosition = async (req, res) => {
 export const updatePosition = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, monthly_salary, description } = req.body;
+        const { name, monthly_salary, description, late_deduction_percentage } = req.body;
 
         if (!name || !monthly_salary) {
             return res.status(400).json({
@@ -77,7 +78,8 @@ export const updatePosition = async (req, res) => {
             id,
             name,
             parseFloat(monthly_salary),
-            description
+            description,
+            late_deduction_percentage
         );
 
         if (affectedRows === 0) {

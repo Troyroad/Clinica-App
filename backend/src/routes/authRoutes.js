@@ -1,9 +1,11 @@
 // backend/src/routes/authRoutes.js
 import express from 'express';
-import { login } from '../controllers/authController.js';
+import * as authController from '../controllers/authController.js';
 
 const router = express.Router();
 
-router.post('/login', login);
+router.post('/login', authController.login);
+router.post('/change-password', authController.changePassword);
+router.get('/users', authController.getUsers);
 
 export default router;

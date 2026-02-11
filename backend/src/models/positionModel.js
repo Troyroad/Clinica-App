@@ -4,7 +4,7 @@ import db from "../config/db.js";
 // Obtener todos los cargos
 export const getAllPositions = async () => {
     const [rows] = await db.query(`
-    SELECT id, name, monthly_salary, description, created_at, updated_at
+    SELECT id, name, monthly_salary, description, late_deduction_percentage, created_at, updated_at
     FROM positions
     ORDER BY name
   `);
@@ -21,19 +21,19 @@ export const getPositionById = async (id) => {
 };
 
 // Crear nuevo cargo
-export const createPosition = async (name, monthly_salary, description) => {
+export const createPosition = async (name, monthly_salary, description, late_deduction_percentage) => {
     const [result] = await db.query(
-        'INSERT INTO positions (name, monthly_salary, description) VALUES (?, ?, ?)',
-        [name, monthly_salary, description || null]
+        'INSERT INTO positions (name, monthly_salary, description, late_deduction_percentage) VALUES (?, ?, ?, ?)',
+        [name, monthly_salary, description || null, late_deduction_percentage || 0]
     );
     return result.insertId;
 };
 
 // Actualizar cargo
-export const updatePosition = async (id, name, monthly_salary, description) => {
+export const updatePosition = async (id, name, monthly_salary, description, late_deduction_percentage) => {
     const [result] = await db.query(
-        'UPDATE positions SET name = ?, monthly_salary = ?, description = ? WHERE id = ?',
-        [name, monthly_salary, description || null, id]
+        'UPDATE positions SET name = ?, monthly_salary = ?, description = ?, late_deduction_percentage = ? WHERE id = ?',
+        [name, monthly_salary, description || null, late_deduction_percentage || 0, id]
     );
     return result.affectedRows;
 };

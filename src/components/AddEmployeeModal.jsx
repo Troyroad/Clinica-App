@@ -1,12 +1,14 @@
 // AddEmployeeModal.jsx - VERSIÓN COMPLETAMENTE CORREGIDA
 import React, { useState, useEffect, useRef } from 'react'
 
-export default function AddEmployeeModal({ onAdd, onClose }) {
+export default function AddEmployeeModal({ onAdd, onClose, positions = [], honorariumPositions = [] }) {
   const [form, setForm] = useState({
     name: '',
     lastName: '',
     role: '',
-    idNumber: ''
+    idNumber: '',
+    positionId: '',
+    honorariumPositionId: ''
   })
   const [loading, setLoading] = useState(false)
 
@@ -65,7 +67,9 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
         name: '',
         lastName: '',
         role: '',
-        idNumber: ''
+        idNumber: '',
+        positionId: '',
+        honorariumPositionId: ''
       })
 
       // 🔁 CERRAR MODAL
@@ -151,6 +155,36 @@ export default function AddEmployeeModal({ onAdd, onClose }) {
           />
         </div>
 
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Cargo Quincenal (opcional):</label>
+          <select
+            value={form.positionId}
+            onChange={handleInputChange('positionId')}
+            style={styles.select}
+            disabled={loading}
+          >
+            <option value="">Sin cargo quincenal</option>
+            {positions.map(pos => (
+              <option key={pos.id} value={pos.id}>{pos.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Cargo por Honorario (opcional):</label>
+          <select
+            value={form.honorariumPositionId}
+            onChange={handleInputChange('honorariumPositionId')}
+            style={styles.select}
+            disabled={loading}
+          >
+            <option value="">Sin cargo por honorario</option>
+            {honorariumPositions.map(pos => (
+              <option key={pos.id} value={pos.id}>{pos.name}</option>
+            ))}
+          </select>
+        </div>
+
         <div style={styles.buttonContainer}>
           <button
             onClick={onClose}
@@ -208,6 +242,13 @@ const styles = {
   formGroup: {
     marginBottom: '16px'
   },
+  label: {
+    display: 'block',
+    marginBottom: '6px',
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#333'
+  },
   input: {
     width: '100%',
     padding: '12px',
@@ -215,7 +256,6 @@ const styles = {
     borderRadius: '6px',
     fontSize: '16px',
     boxSizing: 'border-box',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
     transition: 'border-color 0.2s, box-shadow 0.2s',
     outline: 'none'
   },

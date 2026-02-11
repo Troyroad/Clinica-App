@@ -1,4 +1,4 @@
-// SecretaryModule.jsx - VERSIÓN CORREGIDA Y FUNCIONAL
+// SecretaryModule.jsx - VERSIÓN COMPLETA CON HONORARIOS Y TURNOS
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import AddEmployeeModal from './AddEmployeeModal'
@@ -6,10 +6,12 @@ import AddEmployeeModal from './AddEmployeeModal'
 export default function SecretaryModule({ onLogout }) {
   const [employees, setEmployees] = useState([])
   const [positions, setPositions] = useState([])
+  const [honorariumPositions, setHonorariumPositions] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [section, setSection] = useState('attendance') // 'attendance' o 'employees'
+  const [section, setSection] = useState('attendance') // 'attendance', 'honorarium-attendance', 'employees'
   const [, setTick] = useState(0) // refresco cada minuto
   const [loading, setLoading] = useState(false)
+  const [selectedShift, setSelectedShift] = useState({}) // {employeeId: 'morning'}
 
   // 🔁 Refrescar tiempo trabajado cada minuto
   useEffect(() => {
@@ -21,15 +23,26 @@ export default function SecretaryModule({ onLogout }) {
   useEffect(() => {
     fetchEmployees()
     fetchPositions()
+    fetchHonorariumPositions()
   }, [])
 
-  // 🔁 Obtener cargos
+  // 🔁 Obtener cargos quincenales
   const fetchPositions = async () => {
     try {
       const res = await axios.get('http://localhost:3001/api/positions')
       setPositions(res.data)
     } catch (err) {
       console.error('Error al cargar cargos:', err)
+    }
+  }
+
+  // 🔁 Obtener cargos por honorario
+  const fetchHonorariumPositions = async () => {
+    try {
+      const res = await axios.get('http://localhost:3001/api/honorarium-positions')
+      setHonorariumPositions(res.data)
+    } catch (err) {
+      console.error('Error al cargar cargos por honorario:', err)
     }
   }
 
@@ -53,20 +66,17 @@ export default function SecretaryModule({ onLogout }) {
   const addEmployee = async (data) => {
     try {
       setLoading(true)
-      // Los nombres de campos deben coincidir con lo que espera el backend
       const employeeData = {
         name: data.name,
         lastName: data.lastName,
         idNumber: data.idNumber,
-        positionId: data.positionId
+        positionId: data.positionId,
+        honorariumPositionId: data.honorariumPositionId
       }
 
       const res = await axios.post('http://localhost:3001/api/employees', employeeData)
-
-      // Agregar el nuevo empleado a la lista
       setEmployees(prev => [...prev, res.data])
       setShowModal(false)
-
       alert('Empleado agregado correctamente')
     } catch (err) {
       console.error('Error al agregar empleado:', err.response?.data || err)
@@ -77,7 +87,7 @@ export default function SecretaryModule({ onLogout }) {
   }
 
   // -------------------------
-  // ELIMINAR EMPLEADO - CORREGIDO
+  // ELIMINAR EMPLEADO
   // -------------------------
   const removeEmployee = async (id) => {
     if (!window.confirm('¿Está seguro de eliminar este empleado?')) return
@@ -85,8 +95,6 @@ export default function SecretaryModule({ onLogout }) {
     try {
       setLoading(true)
       await axios.delete(`http://localhost:3001/api/employees/${id}`)
-
-      // Eliminar de la lista local
       setEmployees(prev => prev.filter(e => e.id !== id))
       alert('Empleado eliminado correctamente')
     } catch (err) {
@@ -98,18 +106,20 @@ export default function SecretaryModule({ onLogout }) {
   }
 
   // -------------------------
-  // MARCAR ENTRADA - CORREGIDO
+  // MARCAR ENTRADA REGULAR (CON TURNO)
   // -------------------------
   const clockIn = async (id) => {
     try {
       setLoading(true)
+      const shift = selectedShift[id] || null
+
       await axios.post('http://localhost:3001/api/sessions/start', {
-        employee_id: id
+        employee_id: id,
+        shift: shift
       })
 
-      // Refrescar la lista para actualizar estados
       await fetchEmployees()
-      alert('Entrada registrada correctamente')
+      alert('Entrada registrada correctamente' + (shift ? ` - Turno: ${shift}` : ''))
     } catch (err) {
       console.error('Error al marcar entrada:', err.response?.data || err)
       alert(`Error: ${err.response?.data?.error || 'No se pudo registrar la entrada'}`)
@@ -119,7 +129,7 @@ export default function SecretaryModule({ onLogout }) {
   }
 
   // -------------------------
-  // MARCAR SALIDA - CORREGIDO
+  // MARCAR SALIDA REGULAR
   // -------------------------
   const clockOut = async (id) => {
     try {
@@ -128,7 +138,6 @@ export default function SecretaryModule({ onLogout }) {
         employee_id: id
       })
 
-      // Refrescar la lista para actualizar estados
       await fetchEmployees()
       alert('Salida registrada correctamente')
     } catch (err) {
@@ -140,7 +149,47 @@ export default function SecretaryModule({ onLogout }) {
   }
 
   // -------------------------
-  // CALCULAR TIEMPO TRABAJADO (HH:mm) - CORREGIDO
+  // MARCAR ENTRADA HONORARIO
+  // -------------------------
+  const clockInHonorarium = async (id) => {
+    try {
+      setLoading(true)
+      await axios.post('http://localhost:3001/api/honorarium-sessions/start', {
+        employee_id: id
+      })
+
+      await fetchEmployees()
+      alert('Entrada de honorario registrada correctamente')
+    } catch (err) {
+      console.error('Error al marcar entrada de honorario:', err.response?.data || err)
+      alert(`Error: ${err.response?.data?.error || 'No se pudo registrar la entrada'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // -------------------------
+  // MARCAR SALIDA HONORARIO
+  // -------------------------
+  const clockOutHonorarium = async (id) => {
+    try {
+      setLoading(true)
+      await axios.post('http://localhost:3001/api/honorarium-sessions/end', {
+        employee_id: id
+      })
+
+      await fetchEmployees()
+      alert('Salida de honorario registrada correctamente')
+    } catch (err) {
+      console.error('Error al marcar salida de honorario:', err.response?.data || err)
+      alert(`Error: ${err.response?.data?.error || 'No se pudo registrar la salida'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // -------------------------
+  // CALCULAR TIEMPO TRABAJADO (HH:mm)
   // -------------------------
   const calculateTime = (sessions = []) => {
     if (!sessions || sessions.length === 0) return '00:00'
@@ -172,6 +221,10 @@ export default function SecretaryModule({ onLogout }) {
     return sessions.find(s => !s.end)
   }
 
+  // Filtrar empleados por tipo
+  const regularEmployees = employees.filter(e => e.positionId)
+  const honorariumEmployees = employees.filter(e => e.honorariumPositionId)
+
   return (
     <div style={styles.layout}>
       {/* Sidebar */}
@@ -182,7 +235,14 @@ export default function SecretaryModule({ onLogout }) {
           onClick={() => setSection('attendance')}
           disabled={loading}
         >
-          Marcar asistencia
+          Marcar Asistencia
+        </button>
+        <button
+          style={section === 'honorarium-attendance' ? styles.menuActive : styles.menuBtn}
+          onClick={() => setSection('honorarium-attendance')}
+          disabled={loading}
+        >
+          Asistencia de Honorario
         </button>
         <button
           style={section === 'employees' ? styles.menuActive : styles.menuBtn}
@@ -209,10 +269,10 @@ export default function SecretaryModule({ onLogout }) {
             </div>
           )}
 
-          {/* ================== MARCAR ASISTENCIA ================== */}
+          {/* ================== MARCAR ASISTENCIA REGULAR ================== */}
           {section === 'attendance' && (
             <>
-              <h2>Marcar asistencia</h2>
+              <h2>Marcar Asistencia (Empleados Quincenales)</h2>
 
               <div style={styles.refreshBar}>
                 <button
@@ -225,27 +285,111 @@ export default function SecretaryModule({ onLogout }) {
                 <small>Última actualización: {new Date().toLocaleTimeString()}</small>
               </div>
 
-              {employees.length === 0 ? (
+              {regularEmployees.length === 0 ? (
                 <p style={{ opacity: 0.6, textAlign: 'center', padding: '20px' }}>
-                  {loading ? 'Cargando empleados...' : 'No hay empleados registrados.'}
+                  {loading ? 'Cargando empleados...' : 'No hay empleados con cargos quincenales.'}
                 </p>
               ) : (
                 <ul style={styles.list}>
-                  {employees.map(e => {
+                  {regularEmployees.map(e => {
                     const active = hasActiveSession(e.sessions)
                     const activeSession = getActiveSession(e.sessions)
+                    const needsShift = ['Enfermera de Piso', 'Camarera'].includes(e.positionName)
 
                     return (
                       <li key={e.id} style={styles.item}>
                         <div>
                           <strong>{e.name} {e.lastName}</strong>
-                          <div style={styles.role}>{e.role || 'Empleado'}</div>
+                          <div style={styles.positionLabel}>{e.positionName || 'Sin cargo'}</div>
                           <div>Cédula: {e.idNumber || 'No registrada'}</div>
                           <small>
                             Tiempo trabajado hoy: <strong>{calculateTime(e.sessions)}</strong>
                             {active && (
                               <span style={{ color: '#e74c3c', marginLeft: '10px' }}>
                                 ● En turno (desde: {new Date(activeSession.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                                {activeSession.shift && ` - ${activeSession.shift}`}
+                              </span>
+                            )}
+                          </small>
+                        </div>
+                        <div style={styles.actions}>
+                          {!active ? (
+                            <>
+                              {needsShift && (
+                                <select
+                                  value={selectedShift[e.id] || ''}
+                                  onChange={ev => setSelectedShift({ ...selectedShift, [e.id]: ev.target.value })}
+                                  style={styles.shiftSelect}
+                                >
+                                  <option value="">Seleccionar turno</option>
+                                  <option value="morning">Mañana (7am-1pm)</option>
+                                  <option value="afternoon">Tarde (1pm-7pm)</option>
+                                  <option value="night">Noche (7pm-7am)</option>
+                                </select>
+                              )}
+                              <button
+                                onClick={() => clockIn(e.id)}
+                                disabled={loading || (needsShift && !selectedShift[e.id])}
+                                style={styles.primaryButton}
+                              >
+                                Entrada
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => clockOut(e.id)}
+                              disabled={loading}
+                              style={styles.secondaryButton}
+                            >
+                              Salida
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
+          )}
+
+          {/* ================== MARCAR ASISTENCIA HONORARIO ================== */}
+          {section === 'honorarium-attendance' && (
+            <>
+              <h2>Marcar Asistencia de Honorario</h2>
+
+              <div style={styles.refreshBar}>
+                <button
+                  onClick={fetchEmployees}
+                  disabled={loading}
+                  style={styles.refreshButton}
+                >
+                  Actualizar lista
+                </button>
+                <small>Última actualización: {new Date().toLocaleTimeString()}</small>
+              </div>
+
+              {honorariumEmployees.length === 0 ? (
+                <p style={{ opacity: 0.6, textAlign: 'center', padding: '20px' }}>
+                  {loading ? 'Cargando empleados...' : 'No hay empleados con cargos por honorario.'}
+                </p>
+              ) : (
+                <ul style={styles.list}>
+                  {honorariumEmployees.map(e => {
+                    const active = hasActiveSession(e.honorariumSessions || [])
+                    const activeSession = getActiveSession(e.honorariumSessions || [])
+
+                    return (
+                      <li key={e.id} style={styles.item}>
+                        <div>
+                          <strong>{e.name} {e.lastName}</strong>
+                          <div style={styles.positionLabel}>{e.honorariumPositionName || 'Sin cargo'}</div>
+                          <div>Cédula: {e.idNumber || 'No registrada'}</div>
+                          <small>
+                            Tiempo trabajado hoy: <strong>{calculateTime(e.honorariumSessions || [])}</strong>
+                            {active && (
+                              <span style={{ color: '#e74c3c', marginLeft: '10px' }}>
+                                ● En cirugía (desde: {new Date(activeSession.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
                               </span>
                             )}
                           </small>
@@ -253,7 +397,7 @@ export default function SecretaryModule({ onLogout }) {
                         <div style={styles.actions}>
                           {!active ? (
                             <button
-                              onClick={() => clockIn(e.id)}
+                              onClick={() => clockInHonorarium(e.id)}
                               disabled={loading}
                               style={styles.primaryButton}
                             >
@@ -261,7 +405,7 @@ export default function SecretaryModule({ onLogout }) {
                             </button>
                           ) : (
                             <button
-                              onClick={() => clockOut(e.id)}
+                              onClick={() => clockOutHonorarium(e.id)}
                               disabled={loading}
                               style={styles.secondaryButton}
                             >
@@ -310,11 +454,13 @@ export default function SecretaryModule({ onLogout }) {
                     <li key={e.id} style={styles.item}>
                       <div>
                         <strong>{e.name} {e.lastName}</strong>
-                        <div style={styles.role}>{e.role || 'Empleado'}</div>
+                        <div style={styles.positionLabel}>
+                          {e.positionName || e.honorariumPositionName || 'Sin cargo'}
+                        </div>
                         <div>Cédula: {e.idNumber || 'No registrada'}</div>
                         <div style={styles.stats}>
-                          <small>Sesiones hoy: {e.sessions?.length || 0}</small>
-                          <small>Tiempo: {calculateTime(e.sessions)}</small>
+                          <small>Sesiones hoy: {(e.sessions?.length || 0) + (e.honorariumSessions?.length || 0)}</small>
+                          <small>Tiempo: {calculateTime([...(e.sessions || []), ...(e.honorariumSessions || [])])}</small>
                         </div>
                       </div>
                       <div style={styles.actions}>
@@ -340,6 +486,7 @@ export default function SecretaryModule({ onLogout }) {
               onAdd={addEmployee}
               onClose={() => setShowModal(false)}
               positions={positions}
+              honorariumPositions={honorariumPositions}
             />
           )}
         </div>
@@ -348,7 +495,7 @@ export default function SecretaryModule({ onLogout }) {
   )
 }
 
-// ================== ESTILOS (MANTENIDOS ORIGINALES + MEJORAS) ==================
+// ================== ESTILOS ==================
 const styles = {
   layout: {
     display: 'flex',
@@ -356,7 +503,7 @@ const styles = {
     background: '#f3f4f6'
   },
   sidebar: {
-    width: 230,
+    width: 250,
     background: '#1f2937',
     padding: 20,
     display: 'flex',
@@ -404,7 +551,7 @@ const styles = {
   },
   card: {
     width: '100%',
-    maxWidth: 800,
+    maxWidth: 900,
     background: '#fff',
     borderRadius: 14,
     padding: 32,
@@ -423,14 +570,16 @@ const styles = {
     padding: '14px 0',
     borderBottom: '1px solid #e5e7eb'
   },
-  role: {
+  positionLabel: {
     fontSize: 13,
     color: '#6b7280',
+    marginTop: 4,
     marginBottom: 4
   },
   actions: {
     display: 'flex',
-    gap: 8
+    gap: 8,
+    alignItems: 'center'
   },
   stats: {
     display: 'flex',
@@ -491,6 +640,13 @@ const styles = {
     padding: '8px 16px',
     borderRadius: '6px',
     cursor: 'pointer'
+  },
+  shiftSelect: {
+    padding: '6px 10px',
+    borderRadius: '6px',
+    border: '1px solid #d1d5db',
+    fontSize: 13,
+    marginRight: 8
   },
   loadingOverlay: {
     position: 'absolute',
