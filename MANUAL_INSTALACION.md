@@ -59,16 +59,20 @@ GRANT ALL PRIVILEGES ON *.* TO 'clinica_user'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 ```
 
-4. Editar el archivo de configuración de MySQL:
-   - Ubicación: `C:\ProgramData\MySQL\MySQL Server 8.0\my.ini`
-   - Buscar la línea: `bind-address = 127.0.0.1`
-   - Cambiar a: `bind-address = 0.0.0.0`
-   - Guardar el archivo
+4. **Método Automático (Recomendado):**
+   - Ir a la carpeta `C:\clinica-app`
+   - Click derecho en el archivo `CONFIGURAR_MYSQL.ps1`
+   - Seleccionar "Ejecutar con PowerShell"
+   - Confirmar si pide permisos
+   - Esperar mensaje "Proceso Finalizado"
 
-5. Reiniciar el servicio MySQL:
-   - Abrir "Servicios" de Windows (Windows + R, escribir `services.msc`)
-   - Buscar "MySQL80"
-   - Click derecho → Reiniciar
+5. **Método Manual (Alternativo):**
+   Si el script falla, editar manualmente:
+   - Ubicación: `C:\ProgramData\MySQL\MySQL Server 8.0\my.ini`
+   - Buscar la sección: `[mysqld]`
+   - Agregar debajo: `bind-address = 0.0.0.0`
+   - Guardar el archivo (requiere permisos de Administrador)
+   - Reiniciar servicio "MySQL80" desde `services.msc`
 
 ### Paso 3: Crear la Base de Datos
 
