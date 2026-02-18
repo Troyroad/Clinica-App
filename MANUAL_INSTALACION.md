@@ -44,7 +44,7 @@ Esta PC alojará la base de datos y el backend.
 
 1. Ejecutar el instalador de MySQL
 2. Elegir "Server only" o "Full"
-3. Configurar contraseña del usuario `root` (ejemplo: `123456`)
+3. Configurar contraseña del usuario `root` (`1803`)
 4. Completar la instalación
 
 ### Paso 2: Configurar MySQL para Acceso Remoto
@@ -54,7 +54,7 @@ Esta PC alojará la base de datos y el backend.
 3. Ejecutar este comando:
 
 ```sql
-CREATE USER 'clinica_user'@'%' IDENTIFIED BY '123456';
+CREATE USER 'clinica_user'@'%' IDENTIFIED BY '1803';
 GRANT ALL PRIVILEGES ON *.* TO 'clinica_user'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 ```
@@ -178,67 +178,38 @@ npm run dev
 
 ---
 
-## 💻 Instalación en PC 2 (Cliente)
+## Instalación en PC 2 (Cliente)
 
-Esta PC solo necesita el frontend, se conectará al backend del PC 1.
+Esta PC solo necesita acceder al frontend del PC 1. No requiere Node.js ni instalar dependencias.
 
-### Paso 1: Instalar Node.js
+### Paso 1: Copiar el Script de Inicio
 
-1. Descargar e instalar Node.js desde: https://nodejs.org/
+1. Copiar el archivo `iniciar_pc2.bat` desde la carpeta `clinica-app` del PC 1 a cualquier lugar del PC 2 (por ejemplo, el Escritorio).
 
-### Paso 2: Copiar Solo el Frontend
+### Paso 2: Configurar la IP del Servidor
 
-1. Copiar la carpeta `clinica-app` a:
+1. En el PC 1, abrir PowerShell y ejecutar:
+   ```powershell
+   ipconfig
    ```
-   C:\clinica-app
+2. Anotar la **Dirección IPv4** (ejemplo: `192.168.1.100`)
+
+3. En el PC 2, hacer clic derecho sobre `iniciar_pc2.bat` → **Editar** (con el Bloc de notas)
+4. Buscar la línea:
    ```
-   
-   **O** copiar solo estos archivos/carpetas:
-   - `src/`
-   - `public/`
-   - `package.json`
-   - `vite.config.js`
-   - `index.html`
-
-### Paso 3: Configurar la Conexión al Servidor
-
-1. Editar TODOS los archivos que tienen `http://localhost:3001` y cambiar a la IP del PC 1:
-
-   **Archivos a editar:**
-   - `src/components/AdminModule.jsx`
-   - `src/components/SecretaryModule.jsx`
-   - `src/components/UserManagement.jsx`
-   - `src/App.jsx`
-
-2. Buscar todas las líneas con:
-   ```javascript
-   http://localhost:3001
+   set PC1_IP=192.168.1.100
    ```
+5. Cambiar `192.168.1.100` por la IP real del PC 1
+6. Guardar y cerrar
 
-3. Reemplazar con (usando la IP del PC 1):
-   ```javascript
-   http://192.168.1.100:3001
-   ```
+### Paso 3: Iniciar la Aplicación
 
-### Paso 4: Instalar Dependencias
-
-```powershell
-cd C:\clinica-app
-npm install
-```
-
-### Paso 5: Iniciar la Aplicación
-
-```powershell
-npm run dev
-```
-
-### Paso 6: Verificar
-
-1. Abrir navegador
-2. Ir a: `http://localhost:5173`
-3. Debería conectarse al backend del PC 1
+1. Hacer **doble clic** en `iniciar_pc2.bat`
+2. El script verificará automáticamente que el servidor del PC 1 esté disponible
+3. El navegador se abrirá solo con la aplicación lista
 4. Login: `secretaria` / `sec123`
+
+> **Nota:** El PC 1 debe tener el backend y frontend corriendo **antes** de ejecutar este script en el PC 2.
 
 ---
 
@@ -300,13 +271,9 @@ Si hay problemas:
 3. **NO CERRAR** estas ventanas mientras se use el sistema
 
 **En PC 2 (Cliente):**
-1. Abrir PowerShell
-2. Ejecutar:
-   ```powershell
-   cd C:\clinica-app
-   npm run dev
-   ```
-3. Abrir navegador en: `http://localhost:5173`
+1. Hacer **doble clic** en `iniciar_pc2.bat` (en el Escritorio o donde se haya guardado)
+2. El navegador se abrirá automáticamente con la aplicación
+3. Iniciar sesión con el usuario correspondiente
 
 ### Flujo de Trabajo Diario
 
@@ -467,12 +434,9 @@ Para reportar problemas, incluir:
 - [ ] Login funciona correctamente
 
 ### PC 2 (Cliente)
-- [ ] Node.js instalado
-- [ ] Aplicación copiada a `C:\clinica-app`
-- [ ] IPs actualizadas en archivos del frontend
-- [ ] Dependencias instaladas
-- [ ] Frontend inicia sin errores
-- [ ] Conecta correctamente al backend de PC 1
+- [ ] Archivo `iniciar_pc2.bat` copiado al PC 2
+- [ ] IP del PC 1 configurada en `iniciar_pc2.bat`
+- [ ] Doble clic en `iniciar_pc2.bat` abre el navegador correctamente
 - [ ] Login funciona correctamente
 
 ### Verificación Final

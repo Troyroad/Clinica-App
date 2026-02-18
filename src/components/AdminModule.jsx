@@ -19,6 +19,9 @@ export default function AdminModule(props) {
   // Estados para Calendario/Asistencias
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7))
   const [entryTime, setEntryTime] = useState('08:00')
+  const [morningEntryTime, setMorningEntryTime] = useState('07:00')
+  const [afternoonEntryTime, setAfternoonEntryTime] = useState('13:00')
+  const [nightEntryTime, setNightEntryTime] = useState('19:00')
   const [tolerance, setTolerance] = useState(30)
 
   // Estados para Cargos Quincenales
@@ -143,8 +146,17 @@ export default function AdminModule(props) {
     const [y, m] = month.split('-').map(Number)
     const totalDays = getWorkingDays(y, m - 1)
 
-    const [eh, em] = entryTime.split(':').map(Number)
-    const entryBaseMinutes = eh * 60 + em + tolerance
+    const toMinutes = (timeStr) => {
+      const [h, min] = timeStr.split(':').map(Number)
+      return h * 60 + min
+    }
+
+    const globalLimit = toMinutes(entryTime) + tolerance
+    const shiftLimits = {
+      morning: toMinutes(morningEntryTime) + tolerance,
+      afternoon: toMinutes(afternoonEntryTime) + tolerance,
+      night: toMinutes(nightEntryTime) + tolerance
+    }
 
     return employees.map(e => {
       const records = (e.sessions || []).filter(s => {
@@ -159,7 +171,11 @@ export default function AdminModule(props) {
         const key = d.toISOString().slice(0, 10)
         if (!daysMap[key]) {
           const mins = d.getHours() * 60 + d.getMinutes()
-          daysMap[key] = mins > entryBaseMinutes ? 'tardy' : 'ok'
+          // Usar el límite del turno si la sesión tiene turno asignado, si no usar el global
+          const limit = (s.shift && shiftLimits[s.shift] !== undefined)
+            ? shiftLimits[s.shift]
+            : globalLimit
+          daysMap[key] = mins > limit ? 'tardy' : 'ok'
         }
       })
 
@@ -175,7 +191,7 @@ export default function AdminModule(props) {
         absent: totalDays - present
       }
     })
-  }, [employees, month, entryTime, tolerance])
+  }, [employees, month, entryTime, morningEntryTime, afternoonEntryTime, nightEntryTime, tolerance])
 
   /* ================= SUELDOS - TODOS LOS EMPLEADOS ================= */
   const payroll = useMemo(() => {
@@ -498,27 +514,41 @@ export default function AdminModule(props) {
           {section === 'calendar' && (
             <>
               <h2 style={styles.sectionTitle}>Calendario de Asistencias</h2>
-              <div style={styles.controls}>
-                <input
-                  type="month"
-                  value={month}
-                  onChange={e => setMonth(e.target.value)}
-                  style={styles.input}
-                />
-                <input
-                  type="time"
-                  value={entryTime}
-                  onChange={e => setEntryTime(e.target.value)}
-                  style={styles.input}
-                  title="Hora de entrada"
-                />
-                <input
-                  type="number"
-                  value={tolerance}
-                  onChange={e => setTolerance(Number(e.target.value))}
-                  style={styles.input}
-                  placeholder="Tolerancia (min)"
-                />
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                  <input
+                    type="month"
+                    value={month}
+                    onChange={e => setMonth(e.target.value)}
+                    style={styles.input}
+                  />
+                  <input
+                    type="number"
+                    value={tolerance}
+                    onChange={e => setTolerance(Number(e.target.value))}
+                    style={{ ...styles.input, width: 130 }}
+                    placeholder="Tolerancia (min)"
+                    title="Minutos de tolerancia para todos los turnos"
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '10px 14px', background: '#f0f4ff', borderRadius: 8, border: '1px solid #c7d7ff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Turno Global (sin turno)</label>
+                    <input type="time" value={entryTime} onChange={e => setEntryTime(e.target.value)} style={styles.input} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Turno Mañana (entrada)</label>
+                    <input type="time" value={morningEntryTime} onChange={e => setMorningEntryTime(e.target.value)} style={styles.input} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Turno Tarde (entrada)</label>
+                    <input type="time" value={afternoonEntryTime} onChange={e => setAfternoonEntryTime(e.target.value)} style={styles.input} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>Turno Noche (entrada)</label>
+                    <input type="time" value={nightEntryTime} onChange={e => setNightEntryTime(e.target.value)} style={styles.input} />
+                  </div>
+                </div>
               </div>
               <table style={styles.table}>
                 <thead>
