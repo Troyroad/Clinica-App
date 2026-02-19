@@ -3,6 +3,7 @@
 -- Ejecutar en MySQL Workbench
 -- ============================================
 
+CREATE DATABASE IF NOT EXISTS clinica_db;
 USE clinica_db;
 
 -- 1. Crear tabla honorarium_positions

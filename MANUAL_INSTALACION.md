@@ -76,18 +76,25 @@ FLUSH PRIVILEGES;
 
 ### Paso 3: Crear la Base de Datos
 
-1. Abrir MySQL Workbench
-2. Conectarse a localhost
-3. Ejecutar:
+**Método recomendado — PowerShell (más confiable):**
 
-```sql
-CREATE DATABASE IF NOT EXISTS clinica_db;
-USE clinica_db;
+Abrir PowerShell como Administrador y ejecutar:
+
+```powershell
+Get-Content "C:\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql" | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p1803
 ```
 
-4. Abrir el archivo: `C:\ruta\a\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql`
-5. Ejecutar todo el script (Ctrl + Shift + Enter)
-6. Verificar que aparezca: "MIGRACION COMPLETADA EXITOSAMENTE!"
+Verificar que al final aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
+
+---
+
+**Método alternativo — MySQL Workbench:**
+
+1. Abrir MySQL Workbench y conectarse a localhost
+2. Ir a **File → Open SQL Script...** y abrir: `C:\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql`
+3. Presionar **Ctrl + Shift + Enter** para ejecutar todo
+4. Verificar que aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
+5. Refrescar el panel **Schemas** (clic derecho → Refresh All) — debe aparecer `clinica_db`
 
 ### Paso 4: Copiar la Aplicación
 
@@ -367,13 +374,13 @@ Si hay problemas:
 mkdir C:\clinica-app\backups
 
 # Crear backup
-mysqldump -u root -p123456 clinica_db > C:\clinica-app\backups\backup_$(Get-Date -Format 'yyyy-MM-dd').sql
+& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe" -u root -p1803 clinica_db > "C:\clinica-app\backups\backup_$(Get-Date -Format 'yyyy-MM-dd').sql"
 ```
 
 ### Restaurar Backup
 
 ```powershell
-mysql -u root -p123456 clinica_db < C:\clinica-app\backups\backup_2026-02-11.sql
+Get-Content "C:\clinica-app\backups\backup_2026-02-11.sql" | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p1803 clinica_db
 ```
 
 ### Actualizar Contraseñas
