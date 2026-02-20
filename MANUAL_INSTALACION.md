@@ -113,13 +113,25 @@ Verificar que al final aparezca: `INSTALACION COMPLETA EXITOSA!`
 
 ### Paso 5: Instalar Dependencias
 
+**IMPORTANTE:** Si aparece error de "scripts disabled", ejecutar primero este comando en PowerShell (como Administrador):
 ```powershell
-# Instalar dependencias del backend
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+```
+
+Luego, ejecutar estos comandos uno por uno:
+
+```powershell
+# 1. Ir a la carpeta principal
+cd C:\clinica-app
+
+# 2. Instalar dependencias del backend
 cd backend
 npm install
 
-# Instalar dependencias del frontend
+# 3. Volver a la carpeta principal
 cd ..
+
+# 4. Instalar dependencias del frontend
 npm install
 ```
 
@@ -130,7 +142,7 @@ npm install
 ```env
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=123456
+DB_PASSWORD=1803
 DB_NAME=clinica_db
 PORT=3001
 ```
