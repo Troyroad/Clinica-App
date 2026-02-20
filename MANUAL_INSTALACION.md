@@ -74,11 +74,26 @@ FLUSH PRIVILEGES;
    - Guardar el archivo (requiere permisos de Administrador)
    - Reiniciar servicio "MySQL80" desde `services.msc`
 
-### Paso 3: Crear la Base de Datos
+### Paso 3: Copiar la Aplicación (IMPORTANTE: Realizar antes de la base de datos)
+
+1. Copiar la carpeta completa `clinica-app` (la que descargaste/recibiste) y pegarla directamente en la unidad **C:**.
+2. La ruta final debe quedar así:
+   ```
+   C:\clinica-app
+   ```
+   *(Si Windows pide permisos de Administrador para copiar a C:\, haz clic en "Continuar")*
+
+3. Abrir PowerShell como Administrador.
+4. Navegar a la carpeta copiando y pegando este comando:
+   ```powershell
+   cd C:\clinica-app
+   ```
+
+### Paso 4: Crear la Base de Datos
 
 **Método recomendado — PowerShell (más confiable):**
 
-Abrir PowerShell como Administrador y ejecutar:
+Una vez copiada la carpeta en el paso anterior, ejecuta en PowerShell (como Administrador):
 
 ```powershell
 Get-Content "C:\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql" | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p1803
@@ -95,19 +110,6 @@ Verificar que al final aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
 3. Presionar **Ctrl + Shift + Enter** para ejecutar todo
 4. Verificar que aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
 5. Refrescar el panel **Schemas** (clic derecho → Refresh All) — debe aparecer `clinica_db`
-
-### Paso 4: Copiar la Aplicación
-
-1. Copiar la carpeta completa `clinica-app` a:
-   ```
-   C:\clinica-app
-   ```
-
-2. Abrir PowerShell como Administrador
-3. Navegar a la carpeta:
-   ```powershell
-   cd C:\clinica-app
-   ```
 
 ### Paso 5: Instalar Dependencias
 
