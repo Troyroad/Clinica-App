@@ -96,19 +96,19 @@ FLUSH PRIVILEGES;
 Una vez copiada la carpeta en el paso anterior, ejecuta en PowerShell (como Administrador):
 
 ```powershell
-Get-Content "C:\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql" | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p1803
+Get-Content "C:\clinica-app\db\COMPLETE_DB_SETUP.sql" | & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p1803
 ```
 
-Verificar que al final aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
+Verificar que al final aparezca: `INSTALACION COMPLETA EXITOSA!`
 
 ---
 
 **Método alternativo — MySQL Workbench:**
 
 1. Abrir MySQL Workbench y conectarse a localhost
-2. Ir a **File → Open SQL Script...** y abrir: `C:\clinica-app\db\EJECUTAR_EN_WORKBENCH.sql`
+2. Ir a **File → Open SQL Script...** y abrir: `C:\clinica-app\db\COMPLETE_DB_SETUP.sql`
 3. Presionar **Ctrl + Shift + Enter** para ejecutar todo
-4. Verificar que aparezca: `MIGRACION COMPLETADA EXITOSAMENTE!`
+4. Verificar que aparezca: `INSTALACION COMPLETA EXITOSA!`
 5. Refrescar el panel **Schemas** (clic derecho → Refresh All) — debe aparecer `clinica_db`
 
 ### Paso 5: Instalar Dependencias
